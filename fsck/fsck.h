@@ -235,6 +235,7 @@ int f2fs_resize(struct f2fs_sb_info *);
 int f2fs_sload(struct f2fs_sb_info *);
 
 /* segment.c */
+void write_inode(u64, struct f2fs_node *);
 int reserve_new_block(struct f2fs_sb_info *, block_t *,
 					struct f2fs_summary *, int);
 int new_data_block(struct f2fs_sb_info *, void *,

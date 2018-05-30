@@ -16,7 +16,7 @@
 #include "fsck.h"
 #include "node.h"
 
-static void write_inode(u64 blkaddr, struct f2fs_node *inode)
+void write_inode(u64 blkaddr, struct f2fs_node *inode)
 {
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
 		inode->i.i_inode_checksum =
