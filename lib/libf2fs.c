@@ -473,9 +473,21 @@ f2fs_hash_t f2fs_dentry_hash(const unsigned char *name, int len)
 	return f2fs_hash;
 }
 
+#define ALIGN_DOWN(addrs, size)		(((addrs) / (size)) * (size))
 unsigned int addrs_per_inode(struct f2fs_inode *i)
 {
-	return CUR_ADDRS_PER_INODE(i) - get_inline_xattr_addrs(i);
+	unsigned int addrs = CUR_ADDRS_PER_INODE(i) - get_inline_xattr_addrs(i);
+
+	if (!(le32_to_cpu(i->i_flags) & F2FS_COMPR_FL))
+		return addrs;
+	return ALIGN_DOWN(addrs, 1 << i->i_log_cluster_size);
+}
+
+unsigned int addrs_per_block(struct f2fs_inode *i)
+{
+	if (!(le32_to_cpu(i->i_flags) & F2FS_COMPR_FL))
+		return DEF_ADDRS_PER_BLOCK;
+	return ALIGN_DOWN(DEF_ADDRS_PER_BLOCK, 1 << i->i_log_cluster_size);
 }
 
 /*

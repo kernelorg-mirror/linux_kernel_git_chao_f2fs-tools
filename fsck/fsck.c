@@ -823,6 +823,9 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		/* check extent info */
 		check_extent_info(&child, blkaddr, 0);
 
+		if (blkaddr == COMPRESS_ADDR)
+			continue;
+
 		if (blkaddr != 0) {
 			ret = fsck_chk_data_blk(sbi,
 					blkaddr,
@@ -874,11 +877,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			}
 skip:
 			if (ntype == TYPE_DIRECT_NODE)
-				child.pgofs += ADDRS_PER_BLOCK;
+				child.pgofs += ADDRS_PER_BLOCK(&node_blk->i);
 			else if (ntype == TYPE_INDIRECT_NODE)
-				child.pgofs += ADDRS_PER_BLOCK * NIDS_PER_BLOCK;
+				child.pgofs += ADDRS_PER_BLOCK(&node_blk->i) *
+								NIDS_PER_BLOCK;
 			else
-				child.pgofs += ADDRS_PER_BLOCK *
+				child.pgofs += ADDRS_PER_BLOCK(&node_blk->i) *
 						NIDS_PER_BLOCK * NIDS_PER_BLOCK;
 		}
 
@@ -1053,12 +1057,12 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	child->p_ino = nid;
 	child->pp_ino = le32_to_cpu(inode->i_pino);
 
-	for (idx = 0; idx < ADDRS_PER_BLOCK; idx++, child->pgofs++) {
+	for (idx = 0; idx < ADDRS_PER_BLOCK(inode); idx++, child->pgofs++) {
 		block_t blkaddr = le32_to_cpu(node_blk->dn.addr[idx]);
 
 		check_extent_info(child, blkaddr, 0);
 
-		if (blkaddr == 0x0)
+		if (blkaddr == 0x0 || blkaddr == COMPRESS_ADDR)
 			continue;
 		ret = fsck_chk_data_blk(sbi,
 			blkaddr, child,
@@ -1106,7 +1110,7 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 				FIX_MSG("Set indirect node 0x%x -> 0", i);
 			}
 skip:
-			child->pgofs += ADDRS_PER_BLOCK;
+			child->pgofs += ADDRS_PER_BLOCK(&node_blk->i);
 		}
 	}
 
@@ -1148,7 +1152,8 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 				FIX_MSG("Set double indirect node 0x%x -> 0", i);
 			}
 skip:
-			child->pgofs += ADDRS_PER_BLOCK * NIDS_PER_BLOCK;
+			child->pgofs += ADDRS_PER_BLOCK(&node_blk->i) *
+							NIDS_PER_BLOCK;
 		}
 	}
 
@@ -2303,7 +2308,7 @@ static void fsck_failed_reconnect_file_dnode(struct f2fs_sb_info *sbi,
 	fsck->chk.valid_blk_cnt--;
 	f2fs_clear_main_bitmap(sbi, ni.blk_addr);
 
-	for (i = 0; i < ADDRS_PER_BLOCK; i++) {
+	for (i = 0; i < ADDRS_PER_BLOCK(&node->i); i++) {
 		addr = le32_to_cpu(node->dn.addr[i]);
 		if (!addr)
 			continue;

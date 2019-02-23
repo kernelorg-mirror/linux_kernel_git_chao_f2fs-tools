@@ -19,7 +19,7 @@
 #include "fsck.h"
 
 #define ADDRS_PER_PAGE(page) \
-	(IS_INODE(page) ? ADDRS_PER_INODE(&page->i) : ADDRS_PER_BLOCK)
+	(IS_INODE(page) ? ADDRS_PER_INODE(&page->i) : ADDRS_PER_BLOCK(&page->i))
 
 static inline int IS_INODE(struct f2fs_node *node)
 {
