@@ -1114,8 +1114,7 @@ static int f2fs_write_root_inode(void)
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
-		raw_node->i.i_extra_isize =
-				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+		raw_node->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
@@ -1271,8 +1270,7 @@ static int f2fs_write_qf_inode(int qtype)
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
-		raw_node->i.i_extra_isize =
-				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+		raw_node->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
@@ -1474,8 +1472,7 @@ static int f2fs_write_lpf_inode(void)
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
-		raw_node->i.i_extra_isize =
-			cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+		raw_node->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
