@@ -1215,6 +1215,8 @@ unsigned int calc_extra_isize(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM));
 		size = offsetof(struct f2fs_inode, i_crtime);
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME));
+		size = offsetof(struct f2fs_inode, i_compress_algrithm);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION));
 		size = offsetof(struct f2fs_inode, i_extra_end);
 
 	return size;
