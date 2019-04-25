@@ -845,6 +845,11 @@ retry:
 				goto fsck_again;
 		}
 	}
+
+	ret = f2fs_update_sparse_file(sbi);
+	if (ret < 0)
+		return ret;
+
 	ret = f2fs_finalize_device();
 	if (ret < 0)
 		return ret;

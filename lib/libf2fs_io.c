@@ -360,15 +360,6 @@ int f2fs_finalize_device(void)
 		int64_t chunk_start = (blocks[0] == NULL) ? -1 : 0;
 		uint64_t j;
 
-		if (c.func != MKFS) {
-			sparse_file_destroy(f2fs_sparse_file);
-			ret = ftruncate(c.devices[0].fd, 0);
-			ASSERT(!ret);
-			lseek(c.devices[0].fd, 0, SEEK_SET);
-			f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE,
-							c.device_size);
-		}
-
 		for (j = 0; j < blocks_count; ++j) {
 			if (chunk_start != -1) {
 				if (j - chunk_start >= MAX_CHUNK_COUNT) {

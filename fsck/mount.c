@@ -2723,3 +2723,80 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	free(sbi->ckpt);
 	free(sbi->raw_super);
 }
+
+#ifdef WITH_ANDROID
+static int sparse_initialize_meta(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = sbi->raw_super;
+	u_int32_t sit_seg_count, sit_size;
+	u_int32_t nat_seg_count, nat_size;
+	u_int64_t sit_seg_addr, nat_seg_addr, payload_addr;
+	u_int32_t seg_size = 1 << get_sb(log_blocks_per_seg);
+	int ret;
+
+	sit_seg_addr = get_sb(sit_blkaddr);
+	sit_seg_count = get_sb(segment_count_sit);
+	sit_size = sit_seg_count * seg_size;
+
+	DBG(1, "\tSparse: filling sit area at block offset 0x%08"PRIx64"\n",
+								sit_seg_addr);
+	ret = dev_fill(NULL, sit_seg_addr * F2FS_BLKSIZE,
+					sit_size * F2FS_BLKSIZE);
+	if (ret) {
+		MSG(1, "\tError: While zeroing out the sit area "
+				"on disk!!!\n");
+		return -1;
+	}
+
+	nat_seg_addr = get_sb(nat_blkaddr);
+	nat_seg_count = get_sb(segment_count_nat);
+	nat_size = nat_seg_count * seg_size;
+
+	DBG(1, "\tSparse: filling nat area at block offset 0x%08"PRIx64"\n",
+								nat_seg_addr);
+	ret = dev_fill(NULL, nat_seg_addr * F2FS_BLKSIZE,
+					nat_size * F2FS_BLKSIZE);
+	if (ret) {
+		MSG(1, "\tError: While zeroing out the nat area "
+				"on disk!!!\n");
+		return -1;
+	}
+
+	payload_addr = get_sb(segment0_blkaddr) + 1;
+	ret = dev_fill(NULL, payload_addr * F2FS_BLKSIZE,
+					get_sb(cp_payload) * F2FS_BLKSIZE);
+	if (ret) {
+		MSG(1, "\tError: While zeroing out the sit bitmap area "
+				"on disk!!!\n");
+		return -1;
+	}
+
+	payload_addr += seg_size;
+	ret = dev_fill(NULL, payload_addr * F2FS_BLKSIZE,
+					get_sb(cp_payload) * F2FS_BLKSIZE);
+	if (ret) {
+		MSG(1, "\tError: While zeroing out the sit bitmap area "
+				"on disk!!!\n");
+		return -1;
+	}
+	return 0;
+}
+
+int f2fs_update_sparse_file(struct f2fs_sb_info *sbi)
+{
+	int ret;
+
+	if (!c.sparse_mode)
+		return 0;
+
+	sparse_file_destroy(f2fs_sparse_file);
+	ret = ftruncate(c.devices[0].fd, 0);
+	ASSERT(!ret);
+	lseek(c.devices[0].fd, 0, SEEK_SET);
+	f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE, c.device_size);
+
+	return sparse_initialize_meta(sbi);
+}
+#else
+int f2fs_update_sparse_file(struct f2fs_sb_info *sbi) { return 0; }
+#endif
