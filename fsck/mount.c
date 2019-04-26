@@ -774,7 +774,8 @@ static int verify_checksum_chksum(struct f2fs_checkpoint *cp)
 	unsigned int chksum_offset = get_cp(checksum_offset);
 	unsigned int crc, cal_crc;
 
-	if (chksum_offset > CP_CHKSUM_OFFSET) {
+	if (chksum_offset < CP_MIN_CHKSUM_OFFSET ||
+			chksum_offset > CP_CHKSUM_OFFSET) {
 		MSG(0, "\tInvalid CP CRC offset: %u\n", chksum_offset);
 		return -1;
 	}
@@ -2372,6 +2373,10 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 		flags |= CP_TRIMMED_FLAG;
 	if (is_set_ckpt_flags(cp, CP_DISABLED_FLAG))
 		flags |= CP_DISABLED_FLAG;
+	if (is_set_ckpt_flags(cp, CP_LARGE_NAT_BITMAP_FLAG)) {
+		flags |= CP_LARGE_NAT_BITMAP_FLAG;
+		set_cp(checksum_offset, CP_MIN_CHKSUM_OFFSET);
+	}
 
 	set_cp(free_segment_count, get_free_segments(sbi));
 	set_cp(valid_block_count, sbi->total_valid_block_count);
