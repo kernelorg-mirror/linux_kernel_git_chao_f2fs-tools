@@ -184,6 +184,7 @@ u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 	u64 remained_blkentries;
 	block_t blkaddr;
 	void *index_node = NULL;
+	int ret;
 
 	memset(&dn, 0, sizeof(dn));
 
@@ -210,18 +211,24 @@ u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 	while (count > 0) {
 		if (remained_blkentries == 0) {
 			set_new_dnode(&dn, inode, NULL, ino);
-			get_dnode_of_data(sbi, &dn, F2FS_BYTES_TO_BLK(offset),
+			ret = get_dnode_of_data(sbi, &dn, F2FS_BYTES_TO_BLK(offset),
 					LOOKUP_NODE);
 			if (index_node)
 				free(index_node);
 			index_node = (dn.node_blk == dn.inode_blk) ?
 							NULL : dn.node_blk;
-			remained_blkentries = ADDRS_PER_PAGE(sbi,
-						dn.node_blk, dn.inode_blk);
+			if (ret || !dn.node_blk) {
+				remained_blkentries = 1;
+			} else {
+				remained_blkentries = ADDRS_PER_PAGE(sbi,
+						dn.node_blk, dn.inode_blk) -
+						dn.ofs_in_node;
+			}
 		}
 		ASSERT(remained_blkentries > 0);
 
-		blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
+		blkaddr = dn.node_blk ?
+			datablock_addr(dn.node_blk, dn.ofs_in_node) : NULL_ADDR;
 		if (blkaddr == NULL_ADDR || blkaddr == NEW_ADDR)
 			break;
 
@@ -538,6 +545,7 @@ static void update_largest_extent(struct f2fs_sb_info *sbi, nid_t ino)
 	u32 cluster_size;
 	int count;
 	void *index_node = NULL;
+	int ret;
 
 	memset(&dn, 0, sizeof(dn));
 	largest_ext.len = cur_ext.len = 0;
@@ -558,17 +566,22 @@ static void update_largest_extent(struct f2fs_sb_info *sbi, nid_t ino)
 	while (cur_blk <= end_blk) {
 		if (remained_blkentries == 0) {
 			set_new_dnode(&dn, inode, NULL, ino);
-			get_dnode_of_data(sbi, &dn, cur_blk, LOOKUP_NODE);
+			ret = get_dnode_of_data(sbi, &dn, cur_blk, LOOKUP_NODE);
 			if (index_node)
 				free(index_node);
 			index_node = (dn.node_blk == dn.inode_blk) ?
 				NULL : dn.node_blk;
-			remained_blkentries = ADDRS_PER_PAGE(sbi,
-					dn.node_blk, dn.inode_blk);
+			if (ret || !dn.node_blk)
+				remained_blkentries = 1;
+			else
+				remained_blkentries = ADDRS_PER_PAGE(sbi,
+					dn.node_blk, dn.inode_blk) -
+					dn.ofs_in_node;
 		}
 		ASSERT(remained_blkentries > 0);
 
-		blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
+		blkaddr = dn.node_blk ?
+			datablock_addr(dn.node_blk, dn.ofs_in_node) : NULL_ADDR;
 		if (cur_ext.len > 0) {
 			if (is_consecutive(prev_blkaddr, blkaddr))
 				cur_ext.len++;

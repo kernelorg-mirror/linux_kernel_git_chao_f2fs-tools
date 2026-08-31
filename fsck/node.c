@@ -99,6 +99,17 @@ void set_data_blkaddr(struct dnode_of_data *dn)
 	__le32 *addr_array;
 	struct f2fs_node *node_blk = dn->node_blk;
 	unsigned int ofs_in_node = dn->ofs_in_node;
+	unsigned int max_addrs;
+
+	if (!node_blk)
+		return;
+
+	max_addrs = IS_INODE(node_blk) ?
+		ADDRS_PER_INODE(&node_blk->i) : DEF_ADDRS_PER_BLOCK;
+	if (ofs_in_node >= max_addrs) {
+		ASSERT(0);
+		return;
+	}
 
 	addr_array = blkaddr_in_node(node_blk);
 	addr_array[ofs_in_node] = cpu_to_le32(dn->data_blkaddr);
@@ -303,16 +314,57 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			parent_alloced = true;
 			if (i == level)
 				dn->alloced = 1;
+		} else if (!nids[i]) {
+			if (i != 1)
+				free(parent);
+			dn->node_blk = NULL;
+			dn->data_blkaddr = NULL_ADDR;
+			return -ENOENT;
 		} else {
 			/* If Sparse file no read API, */
 			struct node_info ni;
 
+			if (nids[i] >= NM_I(sbi)->max_nid) {
+				if (i != 1)
+					free(parent);
+				dn->node_blk = NULL;
+				dn->data_blkaddr = NULL_ADDR;
+				return -EINVAL;
+			}
+
 			get_node_info(sbi, nids[i], &ni);
+			if (!f2fs_is_valid_blkaddr(sbi, ni.blk_addr, DATA_GENERIC)) {
+				if (i != 1)
+					free(parent);
+				dn->node_blk = NULL;
+				dn->data_blkaddr = NULL_ADDR;
+				return -EINVAL;
+			}
+
 			dn->node_blk = calloc(F2FS_BLKSIZE, 1);
 			ASSERT(dn->node_blk);
 
 			ret = dev_read_block(dn->node_blk, ni.blk_addr);
-			ASSERT(ret >= 0);
+			if (ret < 0) {
+				free(dn->node_blk);
+				if (i != 1)
+					free(parent);
+				dn->node_blk = NULL;
+				dn->data_blkaddr = NULL_ADDR;
+				return -EIO;
+			}
+
+			if (IS_INODE(dn->node_blk) ||
+			    le32_to_cpu(F2FS_NODE_FOOTER(dn->node_blk)->nid) != nids[i] ||
+			    le32_to_cpu(F2FS_NODE_FOOTER(dn->node_blk)->ino) !=
+					le32_to_cpu(F2FS_NODE_FOOTER(dn->inode_blk)->ino)) {
+				free(dn->node_blk);
+				if (i != 1)
+					free(parent);
+				dn->node_blk = NULL;
+				dn->data_blkaddr = NULL_ADDR;
+				return -EINVAL;
+			}
 
 			nblk[i] = ni.blk_addr;
 		}
