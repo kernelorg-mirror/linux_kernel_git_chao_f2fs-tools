@@ -809,6 +809,8 @@ int update_block(struct f2fs_sb_info *sbi, void *buf, u32 *blkaddr,
 		se->type = type = fixed_type;
 	}
 	se->valid_blocks--;
+	if (se->valid_blocks == 0)
+		SM_I(sbi)->free_segments++;
 	f2fs_clear_bit(offset, (char *)se->cur_valid_map);
 	if (need_fsync_data_record(sbi)) {
 		f2fs_clear_bit(offset, (char *)se->ckpt_valid_map);
@@ -833,6 +835,8 @@ int update_block(struct f2fs_sb_info *sbi, void *buf, u32 *blkaddr,
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, new_blkaddr));
 	offset = OFFSET_IN_SEG(sbi, new_blkaddr);
 	se->type = se->orig_type = type;
+	if (se->valid_blocks == 0)
+		SM_I(sbi)->free_segments--;
 	se->valid_blocks++;
 	f2fs_set_bit(offset, (char *)se->cur_valid_map);
 	if (need_fsync_data_record(sbi)) {

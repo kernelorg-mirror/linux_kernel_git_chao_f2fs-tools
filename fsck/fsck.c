@@ -3261,6 +3261,8 @@ static inline void release_block(struct f2fs_sb_info *sbi, u64 blkaddr,
 		se = get_seg_entry(sbi, GET_SEGNO(sbi, blkaddr));
 		offset = OFFSET_IN_SEG(sbi, blkaddr);
 		se->valid_blocks--;
+		if (se->valid_blocks == 0)
+			SM_I(sbi)->free_segments++;
 		f2fs_clear_bit(offset, (char *)se->cur_valid_map);
 		if (need_fsync_data_record(sbi)) {
 			f2fs_clear_bit(offset, (char *)se->ckpt_valid_map);

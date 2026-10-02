@@ -3028,8 +3028,8 @@ static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
 			break;
 	}
 
-	if (j >= MAX_DEVICES)
-		return false;
+	if (j >= MAX_DEVICES || !c.devices[j].path)
+		return true;
 
 	if (c.devices[j].zoned_model != F2FS_ZONED_HM)
 		return true;
@@ -3042,7 +3042,26 @@ static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
 	if (blk_zone_type(&blkz) != BLK_ZONE_TYPE_SEQWRITE_REQ)
 		return true;
 
-	return blk_zone_sector(&blkz) == blk_zone_wp_sector(&blkz);
+	if (blk_zone_sector(&blkz) == blk_zone_wp_sector(&blkz))
+		return true;
+
+	if (c.fix_on && !c.dry_run) {
+		unsigned int segs_per_zone = sbi->segs_per_sec * sbi->secs_per_zone;
+		unsigned int base_segno = zone_segno - (zone_segno % segs_per_zone);
+		unsigned int i;
+
+		for (i = 0; i < segs_per_zone; i++) {
+			struct seg_entry *se = get_seg_entry(sbi, base_segno + i);
+			if (get_seg_vblocks(sbi, se))
+				return false;
+		}
+
+		ret = f2fs_reset_zone(j, &blkz);
+		if (ret == 0)
+			return true;
+	}
+
+	return false;
 }
 
 #else
@@ -3125,7 +3144,7 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left,
 
 	if (*to > 0)
 		*to -= left;
-	if (SM_I(sbi)->free_segments <= SM_I(sbi)->reserved_segments + 1)
+	if (get_free_segments(sbi) <= SM_I(sbi)->reserved_segments + 1)
 		not_enough = 1;
 
 	while (*to >= SM_I(sbi)->main_blkaddr && *to < end_blkaddr) {
@@ -3151,7 +3170,8 @@ next_segment:
 		if (!(get_sb(feature) & F2FS_FEATURE_RO) &&
 			IS_CUR_SECNO(sbi, GET_SEC_FROM_SEG(sbi, segno)))
 			goto next_segment;
-		if (vblocks == 0 && not_enough)
+		if (vblocks == 0 && not_enough &&
+		    c.zoned_model != F2FS_ZONED_HM && !new_sec)
 			goto next_segment;
 
 		if (vblocks == 0 && !(segno % sbi->segs_per_sec)) {
