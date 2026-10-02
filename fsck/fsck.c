@@ -3796,6 +3796,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	struct f2fs_fault_info *ffi = &c.fault_info;
 	bool verify_failed = false;
 	uint64_t max_blks, data_secs, node_secs, free_blks;
+	u32 sit_node_blks = 0;
 
 	if (c.show_file_map)
 		return 0;
@@ -3909,6 +3910,20 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x, 0x%x]\n", sbi->total_valid_node_count,
 						fsck->chk.valid_nat_entry_cnt);
+		verify_failed = true;
+	}
+
+	for (i = 0; i < MAIN_SEGS(sbi); i++) {
+		struct seg_entry *se = get_seg_entry(sbi, i);
+		if (IS_NODESEG(se->type))
+			sit_node_blks += se->valid_blocks;
+	}
+	printf("[FSCK] valid_node_count matching with SIT           ");
+	if (sit_node_blks == fsck->chk.valid_node_cnt) {
+		printf(" [Ok..] [0x%x]\n", sit_node_blks);
+	} else {
+		printf(" [Fail] [0x%x, 0x%x]\n", sit_node_blks,
+						fsck->chk.valid_node_cnt);
 		verify_failed = true;
 	}
 

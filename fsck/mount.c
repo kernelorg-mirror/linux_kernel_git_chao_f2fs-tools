@@ -2068,7 +2068,8 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 	if (IS_NODESEG(type))
 		SET_SUM_TYPE(curseg->sum_blk, SUM_TYPE_NODE);
 	se = get_seg_entry(sbi, curseg->segno);
-	se->type = se->orig_type = type;
+	if (se->valid_blocks == 0 || IS_NODESEG(se->type) == IS_NODESEG(type))
+		se->type = se->orig_type = type;
 	se->dirty = 1;
 }
 
@@ -3190,6 +3191,9 @@ next_segment:
 				return 0;
 			}
 		}
+
+		if (vblocks > 0 && IS_NODESEG(type) != IS_NODESEG(want_type))
+			goto next_segment;
 
 		if (type != want_type)
 			goto next_segment;

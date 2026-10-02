@@ -834,6 +834,11 @@ int update_block(struct f2fs_sb_info *sbi, void *buf, u32 *blkaddr,
 	/* update sit bitmap & valid_blocks && se->type for new block */
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, new_blkaddr));
 	offset = OFFSET_IN_SEG(sbi, new_blkaddr);
+	if (se->valid_blocks > 0 && IS_NODESEG(se->type) != IS_NODESEG(type)) {
+		ERR_MSG("Segment 0x%x has valid blocks (%u) of conflicting type %d, cannot use for type %d\n",
+			GET_SEGNO(sbi, new_blkaddr), se->valid_blocks, se->type, type);
+		ASSERT(0);
+	}
 	se->type = se->orig_type = type;
 	if (se->valid_blocks == 0)
 		SM_I(sbi)->free_segments--;
