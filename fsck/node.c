@@ -303,6 +303,12 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			parent_alloced = true;
 			if (i == level)
 				dn->alloced = 1;
+		} else if (!nids[i]) {
+			if (i != 1)
+				free(parent);
+			dn->node_blk = NULL;
+			dn->data_blkaddr = NULL_ADDR;
+			return -ENOENT;
 		} else {
 			/* If Sparse file no read API, */
 			struct node_info ni;
