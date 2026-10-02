@@ -62,8 +62,16 @@ static inline block_t datablock_addr(struct f2fs_node *node_page,
 					unsigned int offset)
 {
 	__le32 *addr_array;
+	unsigned int max_addrs;
 
-	ASSERT(node_page);
+	if (!node_page)
+		return NULL_ADDR;
+
+	max_addrs = IS_INODE(node_page) ?
+		ADDRS_PER_INODE(&node_page->i) : DEF_ADDRS_PER_BLOCK;
+	if (offset >= max_addrs)
+		return NULL_ADDR;
+
 	addr_array = blkaddr_in_node(node_page);
 	return le32_to_cpu(addr_array[offset]);
 }
