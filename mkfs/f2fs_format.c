@@ -316,7 +316,7 @@ static int f2fs_prepare_super_block(void)
 		(uint64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
 
 	if (c.feature & F2FS_FEATURE_RO)
-		zone_align_start_offset = 8192;
+		zone_align_start_offset = 2 * F2FS_BLKSIZE;
 
 	if (c.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
 		MSG(1, "\t%s: Align start sector number to the page unit\n",
